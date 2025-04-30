@@ -1,0 +1,36 @@
+//Variables 
+
+float ValorA0=0,lectura=0,valor_inst=0,volt_value=0;
+int numero_muestrasAC=10000;
+
+
+void setup() {
+  // put your setup code here, to run once:
+Serial.begin(9600);
+//pinMode(A0,INPUT);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+//ValorA0=analogRead(A0);
+//ValorA0=ValorA0*5/1023;
+lectura_tensionAC();
+
+
+}
+
+//Funciones desarrolladas por nosotros
+
+void lectura_tensionAC(){
+    lectura = 0;
+    valor_inst = 0;
+    for (int i = 0; i < numero_muestrasAC; i++){
+           lectura = analogRead(A0);
+           valor_inst = lectura * lectura + valor_inst;
+
+     }
+    valor_inst /= numero_muestrasAC;
+    volt_value = sqrt(valor_inst);
+    Serial.println(volt_value);
+    delay(10);
+}

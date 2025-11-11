@@ -4,8 +4,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#define ANCHO_PANTALLA 128
-#define ALTO_PANTALLA 64
 
 
 
@@ -16,7 +14,7 @@
 //  Los controles del multiplexor en 6 y 7
 
 // Dirección display típica: 0x3C
-Adafruit_SSD1306 display(128, ALTO_PANTALLA, &Wire, -1);
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 23, 53);
@@ -29,7 +27,7 @@ struct Rele {
 };
 String Cadena = "";
 Rele rele[4];
-float voltage, Imax = 0.5;  // Corriente máxima;
+float voltage;
 int i, Equipos = 4, contador, T = 0, S, A = 0, to = 0, t;
 /*Sincronismo mediante la variable Equipos, está me define que dato envio a labview:
 0 I1,
@@ -52,7 +50,6 @@ void setup() {
     for (;;)
       ;  // Detener si falla
   }
-  display.clearDisplay();
   S = contador = Equipos;
   Serial.begin(115200);
   for (int i = 0; i < Equipos; i++) {  // Inicializa los pines de los LEDs como salida y apaga todos
@@ -94,7 +91,7 @@ Habla
 ------------------------------------------*/
 void lectura_tensionAC() {
   int numero_muestrasAC = 6000;  // Destinado a la obtención de los ADC
-  float lectura, valor_inst = 0, value, ki = 0.2840625 /*5/34*/, kv = 137 /* 55 * 611 / (8 * 51)*/;
+  float lectura, valor_inst = 0, value, ki = 0.567*0.32 /*5/34*/, kv = 145.1 /* 55 * 611 / (8 * 51)*/;
   String Enviar = "";  // Inicializo para enviar al Lab View
   if (rele[contador].On == true || contador == Equipos) {
     for (i = 0; i < numero_muestrasAC; i++) {
@@ -320,6 +317,7 @@ void mostrarTension() {  // Muestra la pantalla de tensión + Estados de lascorr
   }
 }
 String indicadorCorriente(float valor) {  // Genera los signos "!" según el nivel de corriente
+  float Imax = 0.5;  // Corriente máxima;
   if (valor / Imax < 0.25) return " ";
   else if (valor / Imax < 0.5) return " !";
   else if (valor / Imax < 0.75) return " !!";

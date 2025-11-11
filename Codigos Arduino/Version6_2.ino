@@ -120,8 +120,8 @@ void lectura_tensionAC() {
   }
   contador = (contador + 1) % (Equipos + 1);
   // Para el Multiplexor
-  digitalWrite(7,LOW);//contador % 2 > 0);
-  digitalWrite(6,LOW);//contador % 4 > 1);
+  digitalWrite(7,contador % 2 > 0);
+  digitalWrite(6,contador % 4 > 1);
   //digitalWrite(8, contador%8>3); Lo use pa ve si estaban bien los estados
 }
 /*------------------------------------------

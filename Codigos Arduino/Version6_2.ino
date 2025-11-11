@@ -1,12 +1,6 @@
 #include <SPI.h>
 #include <Ethernet.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-
-#define ANCHO_PANTALLA 128
-#define ALTO_PANTALLA 64
-
+#include <LiquidCrystal_I2C.h>
 
 
 // Configuración de red // Dirección MAC e IP para el Arduino
@@ -15,9 +9,8 @@
 //  Los reles estan desde el pin 5 al 2
 //  Los controles del multiplexor en 6 y 7
 
-// Dirección display típica: 0x3C
-Adafruit_SSD1306 display(ANCHO_PANTALLA, ALTO_PANTALLA, &Wire, -1);
-
+// Dirección del módulo I2C (común: 0x27 o 0x3F)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 23, 53);
 EthernetServer server(80);  // Inicializa el servidor web en el puerto 80
@@ -47,12 +40,8 @@ void Ok(EthernetClient &client) {  // Envía la cabecera HTTP para respuestas "2
   client.println();
 }
 void setup() {
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {  // Iniciar display
-    Serial.println(F("No se encontró la pantalla SSD1306"));
-    for (;;)
-      ;  // Detener si falla
-  }
-  display.clearDisplay();
+  lcd.init();
+  lcd.backlight();
   S = contador = Equipos;
   Serial.begin(115200);
   for (int i = 0; i < Equipos; i++) {  // Inicializa los pines de los LEDs como salida y apaga todos
@@ -68,16 +57,11 @@ void loop() {
   Escuchar();
   Web();         // Atiende peticiones web
   if (S != A) {  //Solo lo escribo cuando A cambia
-    display.clearDisplay();
-    display.setTextSize(2);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(5, 0);
     if (S < Equipos) {
       mostrarCanal(S);
     } else if (S == Equipos) {
       mostrarTension();
     }
-    display.display();
     A = S;
   }
   T = (T + 1) % 6;
@@ -94,16 +78,16 @@ Habla
 ------------------------------------------*/
 void lectura_tensionAC() {
   int numero_muestrasAC = 6000;  // Destinado a la obtención de los ADC
-  float lectura, valor_inst = 0, value, ki = 0.2840625 /*5/34*/, kv = 137 /* 55 * 611 / (8 * 51)*/;
+  float lectura = 0, valor_inst = 0, value, ki = 0.567*0.32 /*5/34*/, kv = 145.1 /* 55 * 611 / (8 * 51)*/;
   String Enviar = "";  // Inicializo para enviar al Lab View
   if (rele[contador].On == true || contador == Equipos) {
     for (i = 0; i < numero_muestrasAC; i++) {
       lectura = analogRead(A0 + contador / Equipos);
       valor_inst += lectura * lectura;
-      delayMicroseconds(17);  //Periodo de muestreo optimo, para despreciar el tiempo de muestreo necesario
+      delayMicroseconds(17);                         //Periodo de muestreo optimo, para despreciar el tiempo de muestreo necesario
+      value = sqrt(valor_inst / numero_muestrasAC);  //Valor digital RMS
     }
-    value = sqrt(valor_inst / numero_muestrasAC);  //Valor digital RMS
-    if (contador < Equipos) {                      //Sincronismo mediante la variable Equipos, está me define que dato envio a labview.
+    if (contador < Equipos) {  //Sincronismo mediante la variable Equipos, está me define que dato envio a labview.
       rele[contador].medicion = value * 5 * voltage * ki / 1023;
       rele[contador].Potencia = String(rele[contador].medicion, 3);
       rele[contador].corriente = value * 5 * ki / 1023;
@@ -117,12 +101,13 @@ void lectura_tensionAC() {
       Serial.print("=");
       Serial.print(rele[contador].corriente);
       Serial.println(" A");
-      if (rele[contador].corriente > 0.5) {
+      Serial.println(value* 5/1023);
+      /*if (rele[contador].medicion / voltage > 0.5) {
         rele[contador].On = false;
         Serial.print("W");
         Serial.print(contador + 1);
         Serial.println(" Alta corriente");
-      }
+      }*/
     } else {
       voltage = value * 5 * kv / 1023;
       if (rele[0].On == false && rele[1].On == false && rele[2].On == false && rele[3].On == false) {
@@ -131,11 +116,12 @@ void lectura_tensionAC() {
         Serial.println(" V");
       }
     }
+    value=0;
   }
   contador = (contador + 1) % (Equipos + 1);
   // Para el Multiplexor
-  digitalWrite(7, contador % 2 > 0);
-  digitalWrite(6, contador % 4 > 1);
+  digitalWrite(7,LOW);//contador % 2 > 0);
+  digitalWrite(6,LOW);//contador % 4 > 1);
   //digitalWrite(8, contador%8>3); Lo use pa ve si estaban bien los estados
 }
 /*------------------------------------------
@@ -286,36 +272,40 @@ void manejarComentario(EthernetClient &client, String req) {
 Pantalla LCD
 ------------------------------------------*/
 void mostrarCanal(int n) {  // Muestra cada canal (Wn e In)
+  lcd.clear();
   if (rele[n].On) {
-    display.print("W");
-    display.print(n + 1);
-    display.print("=");
-    display.print(rele[n].Potencia);
-    display.println(" W");
-    display.setCursor(5, 20);
-    display.print("I");
-    display.print(n + 1);
-    display.print("=");
-    display.print(rele[n].corriente, 2);
-    display.print(" A");
-    display.print(indicadorCorriente(rele[n].corriente));
+    lcd.setCursor(0, 0);  // Fila 1 ? Potencia
+    lcd.print("W");
+    lcd.print(n + 1);
+    lcd.print("=");
+    lcd.print(rele[n].Potencia);
+    lcd.print(" W");
+    lcd.setCursor(0, 1);  // Fila 2 ? Corriente y nivel
+    lcd.print("I");
+    lcd.print(" ");
+    lcd.print(rele[n].corriente, 2);
+    lcd.print(" A");
+    lcd.print(indicadorCorriente(rele[n].corriente));
+    lcd.print(" ");
   } else {
-    display.print("Equipo ");
-    display.print(n + 1);
-    display.print(" Apagado");
+    lcd.print("Equipo ");
+    lcd.print(n + 1);
+    lcd.print(" Apagado");
   }
-  display.display();
 }
 void mostrarTension() {  // Muestra la pantalla de tensión + Estados de lascorrientes
-  display.print("V=");
-  display.print(voltage, 2);
-  display.print(" V");
-  display.setCursor(5, 20);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("V=");
+  lcd.print(voltage, 2);
+  lcd.print(" V");
+  lcd.setCursor(0, 1);
   for (int i = 0; i < 4; i++) {
     if (rele[i].On) {
-      display.print("I");
-      display.print(i + 1);
-      display.print(indicadorCorriente(rele[n].corriente));
+      lcd.print("I");
+      lcd.print(i + 1);
+      lcd.print(indicadorCorriente(rele[i].corriente));
+      if (i < 3) lcd.print(" ");
     }
   }
 }

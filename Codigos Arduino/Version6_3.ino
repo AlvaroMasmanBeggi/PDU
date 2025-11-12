@@ -68,9 +68,13 @@ void loop() {
     display.clearDisplay();
     display.setTextSize(2);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(5, 0);
+    display.setCursor(20, 10);
     if (S < Equipos) {
-      mostrarCanal(S);
+      if (voltage > 100) {
+        mostrarCanal(S);
+      }else{
+        S=Equipos-1;
+      }
     } else if (S == Equipos) {
       mostrarTension();
     }
@@ -91,7 +95,7 @@ Habla
 ------------------------------------------*/
 void lectura_tensionAC() {
   int numero_muestrasAC = 6000;  // Destinado a la obtención de los ADC
-  float lectura, valor_inst = 0, value, ki = 0.567*0.32 /*5/34*/, kv = 145.1 /* 55 * 611 / (8 * 51)*/;
+  float lectura, valor_inst = 0, value, ki = 0.1814 /*5/34*/, kv = 135.82 /* 55 * 611 / (8 * 51)*/;
   String Enviar = "";  // Inicializo para enviar al Lab View
   if (rele[contador].On == true || contador == Equipos) {
     for (i = 0; i < numero_muestrasAC; i++) {
@@ -114,12 +118,12 @@ void lectura_tensionAC() {
       Serial.print("=");
       Serial.print(rele[contador].corriente);
       Serial.println(" A");
-      if (rele[contador].corriente > 0.5) {
+      /*if (rele[contador].corriente > 0.5) {
         rele[contador].On = false;
         Serial.print("W");
         Serial.print(contador + 1);
         Serial.println(" Alta corriente");
-      }
+      }*/
     } else {
       voltage = value * 5 * kv / 1023;
       if (rele[0].On == false && rele[1].On == false && rele[2].On == false && rele[3].On == false) {
@@ -284,42 +288,38 @@ Pantalla LCD
 ------------------------------------------*/
 void mostrarCanal(int n) {  // Muestra cada canal (Wn e In)
   if (rele[n].On) {
-    display.print("W");
-    display.print(n + 1);
-    display.print("=");
-    display.print(rele[n].Potencia);
-    display.println(" W");
-    display.setCursor(5, 20);
-    display.print("I");
-    display.print(n + 1);
-    display.print("=");
-    display.print(rele[n].corriente, 2);
-    display.print(" A");
-    display.print(indicadorCorriente(rele[n].corriente));
+    if (rele[n].medicion > 2) {
+      display.setCursor(0, 10);
+      display.print("Potencia");
+      display.setCursor(100, 10);
+      display.print(n + 1);
+      display.setCursor(17, 33);
+      display.print(rele[n].Potencia);
+      display.println(" W");
+    } else {
+      display.print("Equipo");
+      display.print(n + 1);
+      display.setCursor(55, 33);
+      display.print("OFF");
+    }
   } else {
     display.print("Equipo ");
     display.print(n + 1);
+    display.setCursor(17, 33);
     display.print(" Apagado");
   }
   display.display();
 }
 void mostrarTension() {  // Muestra la pantalla de tensión + Estados de lascorrientes
-  display.print("V=");
-  display.print(voltage, 2);
-  display.print(" V");
-  display.setCursor(5, 20);
-  for (int i = 0; i < 4; i++) {
-    if (rele[i].On) {
-      display.print("I");
-      display.print(i + 1);
-      display.print(indicadorCorriente(rele[i].corriente));
-    }
+  if (voltage > 10) {
+    display.print("Voltaje");
+    display.setCursor(17, 33);
+    display.print(voltage, 2);
+    display.print(" V");
+  } else {
+    display.setCursor(55, 10);
+    display.print("PDU");
+    display.setCursor(55, 33);
+    display.print("OFF");
   }
-}
-String indicadorCorriente(float valor) {  // Genera los signos "!" según el nivel de corriente
-  float Imax = 0.5;  // Corriente máxima;
-  if (valor / Imax < 0.25) return " ";
-  else if (valor / Imax < 0.5) return " !";
-  else if (valor / Imax < 0.75) return " !!";
-  else return " !!!";
 }

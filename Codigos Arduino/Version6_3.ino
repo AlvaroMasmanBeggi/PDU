@@ -69,6 +69,11 @@ void loop() {
     display.setTextSize(2);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(20, 10);
+    if(voltage<100)
+    {
+      S=Equipos+1;
+       mostrarTension();
+    }
     if (S < Equipos) {
       if (voltage > 100) {
         mostrarCanal(S);
@@ -118,12 +123,12 @@ void lectura_tensionAC() {
       Serial.print("=");
       Serial.print(rele[contador].corriente);
       Serial.println(" A");
-      /*if (rele[contador].corriente > 0.5) {
+      if (rele[contador].corriente > 0.5) {
         rele[contador].On = false;
         Serial.print("W");
         Serial.print(contador + 1);
         Serial.println(" Alta corriente");
-      }*/
+      }
     } else {
       voltage = value * 5 * kv / 1023;
       if (rele[0].On == false && rele[1].On == false && rele[2].On == false && rele[3].On == false) {
@@ -287,6 +292,10 @@ void manejarComentario(EthernetClient &client, String req) {
 Pantalla LCD
 ------------------------------------------*/
 void mostrarCanal(int n) {  // Muestra cada canal (Wn e In)
+if(voltage<100)
+    {
+      S=Equipos+1;
+    }
   if (rele[n].On) {
     if (rele[n].medicion > 2) {
       display.setCursor(0, 10);
@@ -311,7 +320,7 @@ void mostrarCanal(int n) {  // Muestra cada canal (Wn e In)
   display.display();
 }
 void mostrarTension() {  // Muestra la pantalla de tensión + Estados de lascorrientes
-  if (voltage > 10) {
+  if (voltage > 100) {
     display.print("Voltaje");
     display.setCursor(17, 33);
     display.print(voltage, 2);
